@@ -144,7 +144,7 @@ return 1;
 //nie zalogowano poprawnie wyswietlamy komunikat i zwracamy wartosc 0
 else
 {
-printf("Wrong login or password! Try again!\n");
+printf("Wrong login/password or user is already logged in! Try again!\n");
 return 0;
 }
 
@@ -264,7 +264,6 @@ int messageID = msgget(10009, 0644 | IPC_CREAT);
 struct message messageMessage;
 messageMessage.type = 9;
 memset(messageMessage.text,0,strlen(messageMessage.text));
-printf("czy tu blad: %s\n",message);
 strncpy(messageMessage.text,message,strlen(message));
 msgsnd(messageID,&messageMessage, sizeof(messageMessage)-sizeof(long),0);
 printf("Message send succesfully!\n");
@@ -299,8 +298,7 @@ memset(messageFull,0,strlen(messageFull));
 strncpy(messageFull,client->name,strlen(client->name));
 printf("%d\n",strlen(client->name));
 strcat(messageFull,";\0");
-strncat(messageFull,message,strlen(message));
-printf("MF: %s\n",messageFull);
+strncat(messageFull,message,strlen(message));;
 messageFull[strlen(messageFull)] = '\0';
 messageToGroup(client,groupType,messageFull);
 memset(messageFull,0,strlen(messageFull));
@@ -308,6 +306,33 @@ memset(message,0,strlen(message));
 memset(groupType,0,strlen(groupType));
 
 }
+
+
+
+
+
+
+void showLoggedUsers()
+{
+int instructionID = msgget(10001, 0644 | IPC_CREAT);
+struct message instructionMessage;
+instructionMessage.type = 1;
+instructionMessage.text[0] = '5';
+msgsnd(instructionID, &instructionMessage, sizeof(instructionMessage) - sizeof(long),0);
+int loggedUsersID = msgget(10010, 0644 | IPC_CREAT);
+struct message loggedMessage;
+loggedMessage.type = 10;
+memset(loggedMessage.text,0,strlen(loggedMessage.text));
+msgrcv(loggedUsersID,&loggedMessage,sizeof(loggedMessage)-sizeof(long),10,0);
+printf("\n%s\n", loggedMessage.text);
+printf("\nPress enter to continue\n");
+int c;
+while((c = getchar())!='\n'){}
+
+}
+
+
+
 
 
 void chooseOption(struct login *client, int option)
@@ -326,6 +351,9 @@ void chooseOption(struct login *client, int option)
 		case '3':
 			sendMessageToGroup(client);
 			break;
+		case '4':
+			showLoggedUsers();
+			break;
 		default:
 			break;
 
@@ -342,7 +370,7 @@ printf("(0) Show your groups\n");
 printf("(1) Show conversations of one of the group\n");
 printf("(2) Log out\n");
 printf("(3) Send message to group\n");
-
+printf("(4) Show logged users\n");
 }
 
 

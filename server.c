@@ -197,6 +197,29 @@ int checkLoginData(struct registered ** registeredUsers,struct login **loggedUse
 	struct registered *registeredIterator;
 	char temp[64] = "\0";
 	struct login *logIterator = NULL;
+
+	//sprawdzanie czy uzytkownik jest juz zalogowany
+	//
+	if(*loggedUsers!= NULL)
+	{
+	struct login *loginIterator;
+	char temp2[64] = "\0";
+	loginIterator = *loggedUsers;
+	while(loginIterator)
+	{
+	strncat(temp2, loginIterator->name,strlen(loginIterator->name));
+	strcat(temp2,";");
+	strncat(temp2, loginIterator->password,strlen(loginIterator->password));
+	if(strcmp(temp2,data)==0)
+	{
+	return 0;
+	}
+	memset(temp2,0,strlen(temp2));
+	loginIterator = loginIterator->next;
+	}
+
+
+	}
 		if(*registeredUsers == NULL)
 			{
 				return 0;
@@ -240,6 +263,7 @@ int checkLoginData(struct registered ** registeredUsers,struct login **loggedUse
 				registeredIterator = registeredIterator->next;
 				}
 }
+
 return 0;
 }
 
@@ -363,7 +387,7 @@ msgsnd(groupID, &groupMessage, sizeof(groupMessage) - sizeof(long),0);
 }
 else
 {
-printf("User doesn't exist!\n");
+printf("User doesn't exist or is already logged in!\n");
 verificationMessage.text[0] = '0';
 msgsnd(verificationID, &verificationMessage, sizeof(verificationMessage) - sizeof(long),0);
 
@@ -490,6 +514,40 @@ memset(messageMessage.text,0,strlen(messageMessage.text));
 
 }
 
+void loggedUsersToClient(struct login **loggedUsers)	
+{
+int loggedUsersID = msgget(10010, 0644 | IPC_CREAT);
+struct message loggedMessage;
+loggedMessage.type = 10;
+memset(loggedMessage.text,0,strlen(loggedMessage.text));
+struct login *loginIterator;
+strcat(loggedMessage.text, "LOGGED USERS:\n\0");
+if(*loggedUsers == NULL)
+{
+	strcat(loggedMessage.text,"No logged users\0");
+}
+else
+{
+loginIterator = *loggedUsers;
+char i='0';
+struct group *groupIterator;
+while(loginIterator)
+{
+
+strcat(loggedMessage.text, "\nUser \0");
+strncat(loggedMessage.text, &i, 1);
+strcat(loggedMessage.text, "\nName: \0");
+strncat(loggedMessage.text, loginIterator->name,strlen(loginIterator->name));
+strcat(loggedMessage.text, "\n");
+loginIterator = loginIterator->next;
+i++;
+}
+
+}
+printf("LM: %s\n",loggedMessage.text);
+msgsnd(loggedUsersID, &loggedMessage, sizeof(loggedMessage)-sizeof(long),0);
+}
+
 ////////////////////////////////
 //Najwazniejsza funkcja otrzymywanie instrukcji
 void getInstruction(struct registered **registeredUsers, struct login **loggedUsers){
@@ -511,6 +569,9 @@ void getInstruction(struct registered **registeredUsers, struct login **loggedUs
 		break;
 		case '4':
 			messageToGroup();
+		break;
+		case '5':
+			loggedUsersToClient(loggedUsers);	
 		break;
 		default:
 		break;
@@ -556,3 +617,4 @@ return 0;
 //7 - wyslanie calej konwersacji danej grupy
 //8 - numer grupy ponownie ale do wyslania wiadomosci
 //9 - wiadomosc wysylana do grupy
+//10 - wiadomosc z zalogowanymi uzytkownikami
