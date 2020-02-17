@@ -406,7 +406,89 @@ printf("User %s logged out!\n", logoutMessage.text);
 
 }
 
+//wczytywanie z pliku txt podanej grupy do stringa ktorego wyslemy do uzytkownika
+char *conversationFromFileToString(char type[]){
+char *fileStr = malloc(20 *sizeof(char));
 
+strncpy(fileStr,type,strlen(type));
+strcat(fileStr, ".txt\0");
+int file = open(fileStr, O_RDWR);
+char sign;
+char *str = malloc(1024 * sizeof(char));
+memset(str,0,strlen(str));
+while(read(file,&sign,1)>0)
+{
+strncat(str, &sign,1);
+
+}
+return str;
+}
+
+
+
+
+
+void groupConversationToUser()
+{
+int groupID = msgget(10006, 0644 | IPC_CREAT);
+struct message groupMessage;
+groupMessage.type = 6;
+memset(groupMessage.text,0,strlen(groupMessage.text));
+msgrcv(groupID,&groupMessage,sizeof(groupMessage)-sizeof(long),6,0);
+printf("Send conversation of group %s to client\n",groupMessage.text);
+int conversationID = msgget(10007, 0644 | IPC_CREAT);
+struct message conversationMessage;
+conversationMessage.type = 7;
+memset(conversationMessage.text,0,strlen(conversationMessage.text));
+char *temp = conversationFromFileToString(groupMessage.text);
+strncpy(conversationMessage.text,temp,strlen(temp));
+msgsnd(conversationID,&conversationMessage,sizeof(conversationMessage)-sizeof(long),0);
+printf("Conversation:\n%s",conversationMessage.text);
+
+}
+
+
+void addMessageToGroupFile(char group[], char message[])
+{
+char *fileStr = malloc(20 *sizeof(char));
+strncpy(fileStr,group,strlen(group));
+strcat(fileStr, ".txt\0");
+int file = open(fileStr, O_RDWR);
+lseek(file,0,SEEK_END);
+char sign;
+int i=0;
+while(message[i] != '\n')
+{
+sign = message[i];
+write(file, &sign, 1);
+i++;
+}
+sign = '\n';
+write(file,&sign,1);
+
+}
+
+
+
+void messageToGroup()
+{
+int groupID = msgget(10008, 0644 | IPC_CREAT);
+struct message groupMessage;
+groupMessage.type = 8;
+memset(groupMessage.text,0,strlen(groupMessage.text));
+msgrcv(groupID, &groupMessage, sizeof(groupMessage)-sizeof(long),8,0);
+int messageID = msgget(10009, 0644 | IPC_CREAT);
+struct message messageMessage;
+messageMessage.type = 9;
+memset(messageMessage.text,0,strlen(messageMessage.text));
+strcpy(messageMessage.text,"\0");
+msgrcv(messageID, &messageMessage, sizeof(messageMessage)-sizeof(long),9,0);
+addMessageToGroupFile(groupMessage.text,messageMessage.text);
+printf("Send message to group %s succesfully\n",groupMessage.text);
+memset(groupMessage.text,0,strlen(groupMessage.text));
+memset(messageMessage.text,0,strlen(messageMessage.text));
+
+}
 
 ////////////////////////////////
 //Najwazniejsza funkcja otrzymywanie instrukcji
@@ -423,6 +505,12 @@ void getInstruction(struct registered **registeredUsers, struct login **loggedUs
 		break;
 		case '2':
 			logOutUser(loggedUsers);
+		break;
+		case '3':
+			groupConversationToUser();
+		break;
+		case '4':
+			messageToGroup();
 		break;
 		default:
 		break;
@@ -464,3 +552,7 @@ return 0;
 //3 - weryfikacja
 //4 - grupy podczas logowania
 //5 - imie podczas wylogowania
+//6 - numer grupy jaka konwersacje wyslac
+//7 - wyslanie calej konwersacji danej grupy
+//8 - numer grupy ponownie ale do wyslania wiadomosci
+//9 - wiadomosc wysylana do grupy

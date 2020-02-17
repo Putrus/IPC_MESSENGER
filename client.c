@@ -86,6 +86,8 @@ while(getpid() >= 10001 && getpid() <= 10019)
 //login i haslo
 char name[64];
 char password[64];
+memset(name,0,strlen(name));
+memset(password,0,strlen(password));
 printf("Login:");
 fgets(name,sizeof(name),stdin);
 printf("Password:");
@@ -128,8 +130,13 @@ printf("Login succesful!\n");
 memset(groupMessage.text,0,strlen(groupMessage.text));
 msgrcv(groupID, &groupMessage, sizeof(groupMessage) - sizeof(long),4,0);
 //dodanie nazwy, hasla i grup do struktury
-strncpy(client->name, name,strlen(name)-1);
-strncpy(client->password, password,strlen(password)-1);
+memset(client->name,0,strlen(client->name));
+memset(client->password,0,strlen(client->password));
+strncpy(client->name, name,strlen(name));
+client->name[strlen(client->name)-1] = '\0';
+strncpy(client->password, password,strlen(password));
+client->password[strlen(client->password)-1] = '\0';
+
 lineToStruct(client, groupMessage.text);
 
 return 1;
@@ -164,17 +171,160 @@ msgsnd(logoutID, &logoutMessage, sizeof(logoutMessage) - sizeof(long),0);
 }
 
 
+void showGroups(struct login *client)
+{
+struct group *groupIterator;
+if(client->groups == NULL)
+{
+printf("You are not in any group!\n");
+}
+else
+{
+groupIterator = client->groups;
+while(groupIterator)
+{
+printf("Group %li\n",groupIterator->type);
+groupIterator = groupIterator->next;
+}
+}
+}
+
+void showClientGroups(struct login *client)
+{
+printf("\n-----YOUR GROUPS-----\n");
+showGroups(client);
+printf("\nPress enter to continue\n");
+int c;
+while((c = getchar())!='\n'){}
+
+}
+
+
+void showConversation(char strType[], struct login *client)
+{
+int instructionID = msgget(10001, 0644 | IPC_CREAT);
+struct message instructionMessage;
+instructionMessage.type = 1;
+memset(instructionMessage.text, 0 , strlen(instructionMessage.text));
+instructionMessage.text[0] = '3';
+msgsnd(instructionID, &instructionMessage, sizeof(instructionMessage)-sizeof(long),0);
+int groupID = msgget(10006, 0644 | IPC_CREAT);
+struct message groupMessage;
+groupMessage.type = 6;
+memset(groupMessage.text,0,strlen(groupMessage.text));
+strncpy(groupMessage.text, strType, strlen(strType));
+msgsnd(groupID, &groupMessage, sizeof(groupMessage)-sizeof(long),0);
+
+int conversationID = msgget(10007,0644 | IPC_CREAT);
+struct message conversationMessage;
+conversationMessage.type = 7;
+memset(conversationMessage.text,0,strlen(conversationMessage.text));
+msgrcv(conversationID, &conversationMessage, sizeof(conversationMessage)-sizeof(long),7,0);
+printf("\nConversation of group %s:\n%s", strType, conversationMessage.text);
+printf("\nPress enter to continue\n");
+int c;
+while((c = getchar())!='\n'){}
+
+
+}
+
+
+
+void showGroupConversation(struct login *client)
+{
+printf("\n-----Show conversation of one of the groups-----\n");
+printf("Your groups:\n");
+showGroups(client);
+printf("Choose group:");
+char *groupType = malloc(3*sizeof(char));
+fgets(groupType,sizeof(groupType),stdin);
+groupType[strlen(groupType)-1] = '\0';
+showConversation(groupType, client);
+memset(groupType,0,strlen(groupType));
+
+}
+
+
+void messageToGroup(struct login *client, char strType[], char message[])
+{
+int instructionID = msgget(10001, 0644 | IPC_CREAT);
+struct message instructionMessage;
+instructionMessage.type = 1;
+memset(instructionMessage.text, 0 , strlen(instructionMessage.text));
+instructionMessage.text[0] = '4';
+msgsnd(instructionID, &instructionMessage, sizeof(instructionMessage)-sizeof(long),0);
+int groupID = msgget(10008, 0644 | IPC_CREAT);
+struct message groupMessage;
+groupMessage.type = 8;
+memset(groupMessage.text,0,strlen(groupMessage.text));
+strncpy(groupMessage.text, strType, strlen(strType));
+groupMessage.text[strlen(groupMessage.text)] = '\0';
+msgsnd(groupID, &groupMessage, sizeof(groupMessage)-sizeof(long),0);
+int messageID = msgget(10009, 0644 | IPC_CREAT);
+struct message messageMessage;
+messageMessage.type = 9;
+memset(messageMessage.text,0,strlen(messageMessage.text));
+printf("czy tu blad: %s\n",message);
+strncpy(messageMessage.text,message,strlen(message));
+msgsnd(messageID,&messageMessage, sizeof(messageMessage)-sizeof(long),0);
+printf("Message send succesfully!\n");
+memset(messageMessage.text,0,strlen(messageMessage.text));
+memset(groupMessage.text,0,strlen(groupMessage.text));
+
+
+
+
+
+}
+
+
+void sendMessageToGroup(struct login*client)
+{
+printf("-----Send message to group's conversation-----\n");
+printf("Your groups:\n");
+showGroups(client);
+printf("Choose group:");
+char *groupType = malloc(3*sizeof(char));
+memset(groupType,0,strlen(groupType));
+fgets(groupType,sizeof(groupType),stdin);
+groupType[strlen(groupType)-1] = '\0';
+printf("Message:");
+char message[256];
+strcpy(message,"\0");
+memset(message,0,strlen(message));
+fgets(message,sizeof(message),stdin);
+message[strlen(message)] = '\0';
+char *messageFull = malloc(256*sizeof(char));
+memset(messageFull,0,strlen(messageFull));
+strncpy(messageFull,client->name,strlen(client->name));
+printf("%d\n",strlen(client->name));
+strcat(messageFull,";\0");
+strncat(messageFull,message,strlen(message));
+printf("MF: %s\n",messageFull);
+messageFull[strlen(messageFull)] = '\0';
+messageToGroup(client,groupType,messageFull);
+memset(messageFull,0,strlen(messageFull));
+memset(message,0,strlen(message));
+memset(groupType,0,strlen(groupType));
+
+}
+
 
 void chooseOption(struct login *client, int option)
 {
 	switch(option)
 	{
 		case '0':
+			showClientGroups(client);
 			break;
 		case '1':
+			showGroupConversation(client);
 			break;
 		case '2':
 			logOut(client);
+			break;
+		case '3':
+			sendMessageToGroup(client);
 			break;
 		default:
 			break;
@@ -189,8 +339,10 @@ void chooseOption(struct login *client, int option)
 void showMenu(struct login *client){
 printf("-----USER %s MENU------\n",client->name);
 printf("(0) Show your groups\n");
-printf("(1) Empty\n");
+printf("(1) Show conversations of one of the group\n");
 printf("(2) Log out\n");
+printf("(3) Send message to group\n");
+
 }
 
 
