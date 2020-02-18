@@ -188,8 +188,7 @@ void getRegisteredDatabase(struct registered **registeredUsers)
 		}
 		
 	}
-	
-	
+	close(file);	
 }
 //funkcja sprawdzajaca czy dane logowania sa ok 0 - nie 1 - tak
 int checkLoginData(struct registered ** registeredUsers,struct login **loggedUsers, char *data)
@@ -538,13 +537,32 @@ strcat(loggedMessage.text, "\nUser \0");
 strncat(loggedMessage.text, &i, 1);
 strcat(loggedMessage.text, "\nName: \0");
 strncat(loggedMessage.text, loginIterator->name,strlen(loginIterator->name));
-strcat(loggedMessage.text, "\n");
+strcat(loggedMessage.text, "\n\0");
+strcat(loggedMessage.text, "User's groups: \n\0");
+if(loginIterator->groups == NULL)
+{
+strcat(loggedMessage.text, "User is not in any group\n\0");
+}
+else
+{
+groupIterator = loginIterator->groups;
+while(groupIterator)
+{
+char buf[3];
+memset(buf,0,3);
+snprintf(buf,3,"%lu",groupIterator->type);
+strcat(loggedMessage.text, "Group \0");
+strncat(loggedMessage.text, buf, 3);
+strcat(loggedMessage.text, "\n\0");
+groupIterator = groupIterator->next;
+}
+}
+
 loginIterator = loginIterator->next;
 i++;
 }
 
 }
-printf("LM: %s\n",loggedMessage.text);
 msgsnd(loggedUsersID, &loggedMessage, sizeof(loggedMessage)-sizeof(long),0);
 }
 
@@ -580,6 +598,86 @@ void getInstruction(struct registered **registeredUsers, struct login **loggedUs
 
 
 
+//wziecie grup tematycznych dostepnych na serwerze z pliku groups.txt
+void getServerGroupsDatabase(struct group **serverGroups)
+{
+int file = open("groups.txt", O_RDWR);
+char sign;
+char temp[10];
+memset(temp,0,strlen(temp));
+struct group *groupIterator;
+while(read(file,&sign,1))
+{
+if(sign == ',')
+{
+struct group *g = malloc(sizeof(struct group));
+g->type = strtol(temp,NULL,10);
+if(*serverGroups == NULL)
+{
+	*serverGroups = g;
+}
+else
+{
+groupIterator = *serverGroups;
+while(groupIterator->next)
+{
+groupIterator = groupIterator->next;
+}
+groupIterator->next = g;
+}
+memset(temp,0,strlen(temp));
+continue;
+}
+strncat(temp,&sign,1);
+}
+close(file);
+}
+
+//dodanie grupy podanej jako argument do grup serwera
+void addGroupToServerGroups(struct group **serverGroups, char group[])
+{
+
+struct group *groupIterator;
+struct group *g = malloc(sizeof(struct group));
+g->type = strtol(group,NULL,10);
+if(*serverGroups == NULL)
+{
+*serverGroups = g;
+}
+else
+{
+groupIterator = *serverGroups;
+while(groupIterator->next)
+{
+groupIterator = groupIterator->next;
+}
+groupIterator->next = g;
+}
+int file = open("groups.txt", O_RDWR);
+lseek(file, -1,SEEK_END);
+//ogarniecie bledu z tym, ze grupa pokazywala sie linijke nizej w pliku
+char sign;
+read(file,&sign,1);
+printf("sign = %c",sign);
+if(sign == '\n')
+{
+lseek(file, -1, SEEK_END);
+}
+else
+{
+lseek(file,0,SEEK_END);
+}
+strcat(group,",\0");
+write(file,group,strlen(group));
+printf("\nAdd new group succesfully!\n");
+close(file);
+}
+
+
+
+
+
+
 //////////////////////////////////////
 //MAIN
 ///////////////////////////////////
@@ -588,8 +686,10 @@ int main(int argc, char *argv[])
 
 struct registered *registeredUsers = NULL;
 struct login *loggedUsers =  NULL;
+struct group *serverGroups = NULL;
 getRegisteredDatabase(&registeredUsers);
 showRegisteredDatabase(&registeredUsers);
+getServerGroupsDatabase(&serverGroups);
 while(getpid() >= 10001 && getpid() <=10019)
 	{
 		if(fork!=0)

@@ -153,7 +153,7 @@ return 0;
 
 
 }
-
+//wylogowanie uzytkownika
 void logOut(struct login *client)
 {
 int instructionID = msgget(10001, 0644 | IPC_CREAT);
@@ -199,7 +199,7 @@ while((c = getchar())!='\n'){}
 
 }
 
-
+//pokazuje konwersacje
 void showConversation(char strType[], struct login *client)
 {
 int instructionID = msgget(10001, 0644 | IPC_CREAT);
@@ -228,8 +228,37 @@ while((c = getchar())!='\n'){}
 
 }
 
+//sprawdza czy uzytkownik jest w danej grupie i zwraca 1 jesli tak i 0 jesli nie
+int checkUserInGroup(struct login *client, char group[])
+{
+long groupType;
+groupType = strtol(group,NULL,10);
+struct group *groupIterator;
+if(client->groups == NULL)
+{
+return 0;
+}
+else
+{
+groupIterator = client->groups;
+while(groupIterator)
+{
+if(groupType == groupIterator->type)
+{
+return 1;
+}
+groupIterator = groupIterator->next;
+}
+}
+return 0;
 
 
+
+}
+
+
+
+//pokazuje konwersacje danej grupy
 void showGroupConversation(struct login *client)
 {
 printf("\n-----Show conversation of one of the groups-----\n");
@@ -239,8 +268,20 @@ printf("Choose group:");
 char *groupType = malloc(3*sizeof(char));
 fgets(groupType,sizeof(groupType),stdin);
 groupType[strlen(groupType)-1] = '\0';
+int check;
+check = checkUserInGroup(client, groupType);
+if(check == 1)
+{
 showConversation(groupType, client);
 memset(groupType,0,strlen(groupType));
+}
+else
+{
+printf("You aren't in this group!\n");
+printf("\nPress enter to continue\n");
+int c;
+while((c = getchar())!='\n'){}
+}
 
 }
 
@@ -276,7 +317,7 @@ memset(groupMessage.text,0,strlen(groupMessage.text));
 
 }
 
-
+//wyslanie wiadomosci do grupy
 void sendMessageToGroup(struct login*client)
 {
 printf("-----Send message to group's conversation-----\n");
@@ -287,6 +328,10 @@ char *groupType = malloc(3*sizeof(char));
 memset(groupType,0,strlen(groupType));
 fgets(groupType,sizeof(groupType),stdin);
 groupType[strlen(groupType)-1] = '\0';
+int check;
+check = checkUserInGroup(client, groupType);
+if(check == 1)
+{
 printf("Message:");
 char message[256];
 strcpy(message,"\0");
@@ -296,7 +341,6 @@ message[strlen(message)] = '\0';
 char *messageFull = malloc(256*sizeof(char));
 memset(messageFull,0,strlen(messageFull));
 strncpy(messageFull,client->name,strlen(client->name));
-printf("%d\n",strlen(client->name));
 strcat(messageFull,";\0");
 strncat(messageFull,message,strlen(message));;
 messageFull[strlen(messageFull)] = '\0';
@@ -304,6 +348,14 @@ messageToGroup(client,groupType,messageFull);
 memset(messageFull,0,strlen(messageFull));
 memset(message,0,strlen(message));
 memset(groupType,0,strlen(groupType));
+}
+else
+{
+printf("You aren't in this group!\n");
+printf("\nPress enter to continue\n");
+int c;
+while((c = getchar())!='\n'){}
+}
 
 }
 
