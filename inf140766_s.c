@@ -154,7 +154,7 @@ void lineToStruct(char line[], struct registered **r)
 //ZAREJESTROWANI UZYTKOWNICY Z PLIKU DO LISTY STRUKTUR
 void getRegisteredDatabase(struct registered **registeredUsers)
 {
-	int file = open("registeredUsersDatabase.txt", O_RDWR);
+	int file = open("inf140766_registeredUsersDatabase.txt", O_RDWR);
 	char sign;
 	char tempSign[1] = "1";
 	char temp[512] = "";
@@ -566,9 +566,58 @@ i++;
 msgsnd(loggedUsersID, &loggedMessage, sizeof(loggedMessage)-sizeof(long),0);
 }
 
+
+
+void addGroup(struct registered **registeredUsers, struct login **loggedUsers, struct group **serverGroups)
+{
+
+int groupID = msgget(10011, 0644 | IPC_CREAT);
+struct message groupMessage;
+groupMessage.type = 11;
+memset(groupMessage.text,0,strlen(groupMessage.text));
+
+struct group *groupIterator;
+
+char buffer[4];
+memset(buffer,0,strlen(buffer));
+groupIterator = *serverGroups;
+	while(groupIterator)
+	{
+	sprintf(buffer, "%d", groupIterator->type);
+	strncat(groupMessage.text, buffer, strlen(buffer));
+	strcat(groupMessage.text,",\0");
+
+	groupIterator = groupIterator->next;
+	}
+msgsnd(groupID, &groupMessage,sizeof(groupMessage)-sizeof(long),0);
+
+int groupToAddID = msgget(10012, 0644 | IPC_CREAT);
+struct message groupToAddMessage;
+groupToAddMessage.type = 12;
+memset(groupToAddMessage.text,0,strlen(groupToAddMessage.text));
+msgrcv(groupToAddID, &groupToAddMessage, sizeof(groupToAddMessage) - sizeof(long),12,0);
+printf("\n\nGROUPFROM: %s\n\n",groupToAddMessage.text);
+
+
+if(groupToAddMessage.text[0] == '1')
+{
+printf("Add user to group\n");
+}
+else
+{
+printf("Error!\n");
+}
+
+
+
+
+
+}
+
+
 ////////////////////////////////
 //Najwazniejsza funkcja otrzymywanie instrukcji
-void getInstruction(struct registered **registeredUsers, struct login **loggedUsers){
+void getInstruction(struct registered **registeredUsers, struct login **loggedUsers, struct group ** serverGroups){
 	struct message instructionMessage;
 	int instructionID = msgget(10001, 0644 | IPC_CREAT);
 	memset(instructionMessage.text,0,strlen(instructionMessage.text));
@@ -591,6 +640,9 @@ void getInstruction(struct registered **registeredUsers, struct login **loggedUs
 		case '5':
 			loggedUsersToClient(loggedUsers);	
 		break;
+		case '6':
+			addGroup(registeredUsers, loggedUsers, serverGroups);	
+			break;
 		default:
 		break;
 	}
@@ -601,7 +653,7 @@ void getInstruction(struct registered **registeredUsers, struct login **loggedUs
 //wziecie grup tematycznych dostepnych na serwerze z pliku groups.txt
 void getServerGroupsDatabase(struct group **serverGroups)
 {
-int file = open("groups.txt", O_RDWR);
+int file = open("inf140766_groups.txt", O_RDWR);
 char sign;
 char temp[10];
 memset(temp,0,strlen(temp));
@@ -653,7 +705,7 @@ groupIterator = groupIterator->next;
 }
 groupIterator->next = g;
 }
-int file = open("groups.txt", O_RDWR);
+int file = open("inf140766_groups.txt", O_RDWR);
 lseek(file, -1,SEEK_END);
 //ogarniecie bledu z tym, ze grupa pokazywala sie linijke nizej w pliku
 char sign;
@@ -701,7 +753,7 @@ while(getpid() >= 10001 && getpid() <=10019)
 
 while(1)
 {
-		getInstruction(&registeredUsers, &loggedUsers);
+		getInstruction(&registeredUsers, &loggedUsers, &serverGroups);
 		showLoggedUsers(&loggedUsers);
 }
 return 0;
@@ -718,3 +770,5 @@ return 0;
 //8 - numer grupy ponownie ale do wyslania wiadomosci
 //9 - wiadomosc wysylana do grupy
 //10 - wiadomosc z zalogowanymi uzytkownikami
+//11 - dostepne grupy na serwerze
+//12 - uzytkownik+grupa jaka uzytkownik dany chce dodac

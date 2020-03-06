@@ -383,7 +383,191 @@ while((c = getchar())!='\n'){}
 
 }
 
+//funkcja sprawdzajaca czy wybrana grupa ktora chcemy dodac istnieje na serwerze
+int checkGroupServerGroups(char line[], int type)
+{
+struct group *groups = NULL;
+struct group *groupIterator;
+struct group *g = NULL;
+int typeStartIndex = 0;
+for(int i=0; i<strlen(line);i++)
+{
+if(line[0] == ',')
+{
+break;
+}
+if(line[i] == ',')
+{
+g = malloc(sizeof(struct group));
+g->next = NULL;
+char *tempType = malloc(20*sizeof(char));
+strncpy(tempType,line + typeStartIndex, i- typeStartIndex);
+g->type = strtol(tempType,NULL,10);
+if(groups == NULL)
+{
+groups = g;
+}
+else
+{
+groupIterator = groups;
+while(groupIterator->next)
+{
+groupIterator = groupIterator->next;
+}
+groupIterator->next = g;
+}
+typeStartIndex = i+1;
 
+}
+
+
+}
+
+
+groupIterator = groups;
+while(groupIterator)
+{
+if(groupIterator->type == type)
+{
+return 1;
+}
+groupIterator = groupIterator->next;
+}
+return 0;
+
+
+
+}
+
+
+void addGroup(struct login*client)
+{
+	char groupType[64];
+
+
+
+	struct message instructionMessage;
+	memset(instructionMessage.text,0,strlen(instructionMessage.text));
+	int instructionID = msgget(10001, 0644 | IPC_CREAT);
+	instructionMessage.type = 1;
+	strcpy(instructionMessage.text,"6\0");
+	msgsnd(instructionID, &instructionMessage,sizeof(instructionMessage)-sizeof(long),0);
+	
+	struct message groupMessage;
+	int groupID = msgget(10011, 0644 | IPC_CREAT);
+	memset(groupMessage.text,0,strlen(groupMessage.text));
+	groupMessage.type = 11;
+	msgrcv(groupID, &groupMessage, sizeof(groupMessage)-sizeof(long),11,0);
+
+	
+
+	
+	char namePlusGroup[64];
+	memset(namePlusGroup, 0 ,strlen(namePlusGroup));
+	printf("Enter group number to add(>20): ");
+	fgets(groupType,sizeof(groupType),stdin);
+	int tempType = strtol(groupType,NULL,10);
+	int groupToAddID = msgget(10012, 0644|IPC_CREAT);
+	struct message groupToAddMessage;
+	groupToAddMessage.type = 12;
+	memset(groupToAddMessage.text,0,strlen(groupToAddMessage.text));
+
+	struct group *groupIterator;
+	if(checkGroupServerGroups(groupMessage.text, tempType) == 1)
+	{
+		if(checkUserInGroup(client, groupType) == 1)
+		{
+			printf("Error! You are already in this group!\n");
+			
+		}
+		else
+		{
+			strcat(groupToAddMessage.text,"1\0");
+			strncat(groupToAddMessage.text, client->name,strlen(client->name));
+			strcat(groupToAddMessage.text,",\0");
+			strncat(groupToAddMessage.text,groupType,strlen(groupType));
+			
+			struct group *g = malloc(sizeof(struct group));
+			g->type = tempType;
+
+			if(client->groups == NULL)
+			{
+						client->groups = g;
+			}
+			else
+			{
+			groupIterator = client->groups;
+
+			while(groupIterator->next)
+			{
+				groupIterator = groupIterator->next;
+			}
+			groupIterator->next = g;
+			}
+
+
+			printf("Succesfully group was added!\n");
+		}
+
+
+	}
+	else
+	{
+		printf("Error! This group not available in this server!\n");
+	}
+	msgsnd(groupToAddID,&groupToAddMessage,sizeof(groupToAddMessage) - sizeof(long),0);
+	
+
+
+printf("\nPress enter to continue\n");
+int c;
+while((c = getchar())!='\n'){}
+	
+
+
+
+}
+
+
+void deleteGroup(struct login * client)
+{
+printf("Choose group to delete: ");
+char groupType[64];
+memset(groupType,0,strlen(groupType));
+fgets(groupType,sizeof(groupType),stdin);
+int tempType = strtol(groupType,NULL,10);
+
+if(checkUserInGroup(client, groupType)==1)
+{
+	struct group *groupIterator = client->groups;;
+	struct group *previous;
+	if(groupIterator->type == tempType)
+	{
+	client->groups = groupIterator->next;
+	}
+	else
+	{
+	while(groupIterator && groupIterator->type == tempType)
+	{
+		previous = groupIterator;
+		groupIterator = groupIterator->next;
+	}
+	previous->next = groupIterator->next;
+	free(groupIterator);
+	}
+
+printf("Delete group succesfully\n");
+}
+else
+{
+printf("You aren't in this group!\n");
+}
+printf("\nPress enter to continue\n");
+int c;
+while((c = getchar())!='\n'){}
+	
+
+}
 
 
 
@@ -406,6 +590,12 @@ void chooseOption(struct login *client, int option)
 		case '4':
 			showLoggedUsers();
 			break;
+		case '5':
+			addGroup(client);
+			break;
+		case '6':
+			deleteGroup(client);
+			break;
 		default:
 			break;
 
@@ -423,6 +613,8 @@ printf("(1) Show conversations of one of the group\n");
 printf("(2) Log out\n");
 printf("(3) Send message to group\n");
 printf("(4) Show logged users\n");
+printf("(5) Add group\n");
+printf("(6) Delete group\n");
 }
 
 

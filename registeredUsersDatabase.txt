@@ -1,3 +1,0 @@
-marcin;putra;20,21,;
-kacper;tylski;20,;
-maks;bolimowski;20,21,22,23,;

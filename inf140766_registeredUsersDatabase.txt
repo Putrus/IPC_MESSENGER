@@ -1,0 +1,9 @@
+user0;pass0;20,;
+user1;pass1;20,21,;
+user2;pass2;20,21,22,;
+user3;pass3;20,;
+user4;pass4;20,21,;
+user5;pass5;20,21,22,;
+user6;pass6;20,;
+user7;pass7;20,21,;
+user8;pass8;20,21,22,;

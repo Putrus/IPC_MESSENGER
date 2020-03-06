@@ -1,0 +1,35 @@
+Opis komunikacji miedzy klientem a serwerem:
+
+1. Po uruchomieniu serwera, serwer pobiera z pliku inf140766_registeredUsersDatabase.txt
+dane zarejestrowanych uzytkownikow do struktury(struct registered)
+
+Wyswietla zarejestrowanych uzytkownikow na ekranie
+
+Pobiera dostepne grupy na serwerze z pliku inf140766_groups.txt
+
+Usuwa procesy o numerach od 10001 do 10019(poniewaz potem beda nam potrzebne)
+
+Po tym wszystkim odpala petle czekajac na instrukcje uzytkownika
+
+Po kazdym wykonaniu instrukcji pokazuje zalogowanych uzytkownikow
+
+2. Po uruchomieniu klienta klient sie loguje, serwer wysyla mu wszystkie jego dane na podstawie
+zarejestrowanych uzytkownikow. Klient otrzymane dane zapisuje do swojej struktury
+
+Po poprawnym zalogowaniu klient przechodzi do swojego menu
+
+W ktorym ma do wyboru
+
+0. Pokazanie swoich grup
+1. Pokazanie konwersacji jednej z grup
+2. Wylogowanie
+3. Wyslanie wiadomosci do grupy
+4. Pokazanie zalogowanych uzytkownikow i ich grup
+
+Po wybraniu jednej z opcji komunikuje sie z serwerem ktory wykonuje instrukcje umozliwiajace wykonanie danego zadania
+
+
+
+Wiem, ze w projekcie moglo sie pojawic wiecej opcji. Jest to troche moje lenistwo, do czego z wielkim bolem sie przyznaje
+
+Praca wykonana w 100% samodzielnie - Marcin Putra 140766
